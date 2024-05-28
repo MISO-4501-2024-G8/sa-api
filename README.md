@@ -86,6 +86,7 @@ nest generate service items
 
 # curls to test get items and create items
 ```bash
+curl http://localhost:3000/health
 curl http://localhost:3000/items
 curl -X POST http://localhost:3000/items -H "Content-Type: application/json" -d '{"id":3,"name": "Item3"}'
 ```
