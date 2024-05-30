@@ -183,4 +183,128 @@ export class UserService {
         sportUser.typePlan = updateTypePlanDto.typePlan;
         return await this.sportUserRepository.save(sportUser);
     }
+
+    async login(email: string, password: string): Promise<any> {
+        const user = await this.userRepository.findOne({ where: { email } });
+        if (!user) {
+            throw new BusinessLogicException(
+                'The user with the given email was not found',
+                BusinessError.NOT_FOUND,
+            );
+        }
+        const encryptPWD = encrypt(password, process.env.TOKEN_SECRET);
+        console.log('encryptPWD:', encryptPWD, password);
+        if (user.password !== encryptPWD) {
+            throw new BusinessLogicException(
+                'The password is incorrect',
+                BusinessError.BAD_REQUEST,
+            );
+        }
+        if (user.user_type === 1 || process.env.USER_TYPE === "S") {
+            const suser = await this.sportUserRepository.findOne({ where: { id: user.id } });
+            if (!suser) {
+                throw new BusinessLogicException(
+                    'The user does not have a sport profile',
+                    BusinessError.NOT_FOUND,
+                );
+            }
+        }
+        if (user.user_type === 2 || process.env.USER_TYPE === "T") {
+            const tduser = await this.thirdUserRepository.findOne({ where: { id: user.id } });
+            if (!tduser) {
+                throw new BusinessLogicException(
+                    'The user does not have a third profile',
+                    BusinessError.NOT_FOUND,
+                );
+            }
+        }
+        const expiration_token = Date.now() + expirationTime;
+        const token = jwt.sign({
+            email,
+            encryptPWD,
+            exp: expiration_token
+        }, process.env.TOKEN_SECRET);
+        user.token = token;
+        user.expiration_token = new Date(expiration_token);
+        await this.userRepository.save(user);
+        return user;
+    }
+
+    async validateToken(token: string): Promise<any> {
+        try {
+            console.log('Token:', token);
+            const payLoad: any = jwt.verify(token, process.env.TOKEN_SECRET);
+            console.log('Payload:', payLoad);
+
+            if (!payLoad) {
+                throw new BusinessLogicException(
+                    'The token is incorrect',
+                    BusinessError.BAD_REQUEST,
+                );
+            }
+
+            const expirationDate = new Date(payLoad.exp * 1000); // Asegurarse de que exp esté en segundos
+            if (Date.now() > payLoad.exp * 1000) {
+                throw new BusinessLogicException(
+                    'The token has expired',
+                    BusinessError.BAD_REQUEST,
+                );
+            }
+
+            const email = payLoad.email;
+            console.log('Email:', email);
+
+            const usuarioExistente = await this.userRepository.findOne({ where: { email: email } });
+            console.log('Usuario Existente:', usuarioExistente);
+
+            if (!usuarioExistente) {
+                throw new BusinessLogicException(
+                    'The user with the given email was not found',
+                    BusinessError.NOT_FOUND,
+                );
+            }
+
+            const userType = usuarioExistente.user_type;
+            if (userType === 1 || process.env.USER_TYPE === "S") {
+                const sportUser = await this.sportUserRepository.findOne({ where: { id: usuarioExistente.id } });
+                if (!sportUser) {
+                    throw new BusinessLogicException(
+                        'The user does not have a sport profile',
+                        BusinessError.NOT_FOUND,
+                    );
+                }
+                const typePlan = sportUser.typePlan;
+                return {
+                    exp: payLoad.exp,
+                    expirationDate: expirationDate.toLocaleString(),
+                    userType: userType,
+                    typePlan: typePlan
+                };
+            }
+
+            if (userType === 2 || process.env.USER_TYPE === "T") {
+                const thirdUser = await this.thirdUserRepository.findOne({ where: { id: usuarioExistente.id } });
+                if (!thirdUser) {
+                    throw new BusinessLogicException(
+                        'The user does not have a third profile',
+                        BusinessError.NOT_FOUND,
+                    );
+                }
+                return {
+                    exp: payLoad.exp,
+                    expirationDate: expirationDate.toLocaleString(),
+                    userType: userType
+                };
+            }
+
+            return {
+                exp: payLoad.exp,
+                expirationDate: expirationDate.toLocaleString(),
+                userType: userType
+            };
+        } catch (error) {
+            console.error('Error in validateToken:', error);
+            throw error;
+        }
+    }
 }
