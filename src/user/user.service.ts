@@ -72,7 +72,7 @@ export class UserService {
                 userType = 3;
                 break;
         }
-        
+
         const encryptPWD = encrypt(usuario.password, process.env.TOKEN_SECRET);
         const idUser = uuidv4().split('-')[0];
         const expiration_token = Date.now() + expirationTime;
@@ -96,7 +96,7 @@ export class UserService {
         }
         await this.userRepository.save(userEntity);
 
-        if(usuario.user_type == 'S'){
+        if (usuario.user_type == 'S') {
             const sportUserEntity: SportUserEntity = {
                 id: userEntity.id,
                 gender: usuario.gender,
@@ -115,8 +115,8 @@ export class UserService {
                 acceptance_personal_data: usuario.acceptance_personal_data,
             }
             await this.sportUserRepository.save(sportUserEntity);
-        } else if (usuario.user_type == 'T'){
-            const parseDate:Date = this.parseDate(usuario.company_creation_date);
+        } else if (usuario.user_type == 'T') {
+            const parseDate: Date = this.parseDate(usuario.company_creation_date);
             const thirdUserEntity: ThirdUserEntity = {
                 id: userEntity.id,
                 company_creation_date: parseDate,
@@ -218,31 +218,34 @@ export class UserService {
                 );
             }
         }
-        const expiration_token = Date.now() + expirationTime;
+        //const expiration_token = Date.now() + expirationTime;
+        const currentDate = new Date();
+        const expirationDate = new Date(currentDate.getTime() + expirationTime);
+        const exp = Math.floor(expirationDate.getTime() / 1000);
+        const formattedExpirationDate = expirationDate.toLocaleString();
+
+
+
         const token = jwt.sign({
             email,
             encryptPWD,
-            exp: expiration_token
+            exp: exp,
         }, process.env.TOKEN_SECRET);
         user.token = token;
-        user.expiration_token = new Date(expiration_token);
+        user.expiration_token = expirationDate
         await this.userRepository.save(user);
         return user;
     }
 
     async validateToken(token: string): Promise<any> {
         try {
-            console.log('Token:', token);
             const payLoad: any = jwt.verify(token, process.env.TOKEN_SECRET);
-            console.log('Payload:', payLoad);
-
             if (!payLoad) {
                 throw new BusinessLogicException(
                     'The token is incorrect',
                     BusinessError.BAD_REQUEST,
                 );
             }
-
             const expirationDate = new Date(payLoad.exp * 1000); // Asegurarse de que exp esté en segundos
             if (Date.now() > payLoad.exp * 1000) {
                 throw new BusinessLogicException(
@@ -250,20 +253,14 @@ export class UserService {
                     BusinessError.BAD_REQUEST,
                 );
             }
-
             const email = payLoad.email;
-            console.log('Email:', email);
-
             const usuarioExistente = await this.userRepository.findOne({ where: { email: email } });
-            console.log('Usuario Existente:', usuarioExistente);
-
             if (!usuarioExistente) {
                 throw new BusinessLogicException(
                     'The user with the given email was not found',
                     BusinessError.NOT_FOUND,
                 );
             }
-
             const userType = usuarioExistente.user_type;
             if (userType === 1 || process.env.USER_TYPE === "S") {
                 const sportUser = await this.sportUserRepository.findOne({ where: { id: usuarioExistente.id } });
@@ -281,7 +278,6 @@ export class UserService {
                     typePlan: typePlan
                 };
             }
-
             if (userType === 2 || process.env.USER_TYPE === "T") {
                 const thirdUser = await this.thirdUserRepository.findOne({ where: { id: usuarioExistente.id } });
                 if (!thirdUser) {
@@ -296,7 +292,6 @@ export class UserService {
                     userType: userType
                 };
             }
-
             return {
                 exp: payLoad.exp,
                 expirationDate: expirationDate.toLocaleString(),
