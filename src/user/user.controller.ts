@@ -13,9 +13,10 @@ import {
 } from '@nestjs/common';
 import { BusinessErrorsInterceptor } from '../shared/interceptors/business-errors.interceptor';
 import { UserService } from './user.service';
-import { UserDto } from './user.dto';
-import { UserEntity } from './user.entity';
+import { UserDto } from './DTOs/user.dto';
+import { UserEntity } from './Entities/user.entity';
 import { plainToInstance } from 'class-transformer';
+import { UpdateTypePlanDto } from './DTOs/update-type-plan.dto';
 
 
 @Controller('user')
@@ -57,5 +58,17 @@ export class UserController {
     @HttpCode(204)
     async delete(@Param('userId') userId: string) {
         return await this.userService.delete(userId);
+    }
+
+
+    @Put('typePlanUser/:userId')
+    async updateTypePlan(@Param('userId') userId: string, @Body() updateTypePlanDto: UpdateTypePlanDto) {
+        try {
+            return await this.userService.updateTypePlan(userId, updateTypePlanDto);
+        } catch (e) {
+            console.log(e);
+            this.logger.debug('Error updating user type plan');
+            this.logger.error(e.message);
+        }
     }
 }

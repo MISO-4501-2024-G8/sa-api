@@ -4,9 +4,9 @@ import { AppService } from './app.service';
 import { ItemsModule } from './items/items.module';
 import { HealthModule } from './health/health.module';
 import { UserModule } from './user/user.module';
-import { UserEntity } from './user/user.entity';
-import { SportUserEntity } from './user/sportUser.entity';
-import { ThirdUserEntity } from './user/thirdUser.entity';
+import { UserEntity } from './user/Entities/user.entity';
+import { SportUserEntity } from './user/Entities/sportUser.entity';
+import { ThirdUserEntity } from './user/Entities/thirdUser.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import * as dotenv from 'dotenv';
 

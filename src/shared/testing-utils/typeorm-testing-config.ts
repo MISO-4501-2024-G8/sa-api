@@ -1,5 +1,5 @@
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserEntity } from 'src/user/user.entity';
+import { UserEntity } from 'src/user/Entities/user.entity';
 
 
 export const TypeOrmTestingConfig = () => [

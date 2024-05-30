@@ -1,17 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { UserEntity } from './user.entity';
+import { UserEntity } from './Entities/user.entity';
 import { Repository } from 'typeorm';
 import {
     BusinessError,
     BusinessLogicException,
 } from '../shared/errors/business-errors';
-import { UserDto } from './user.dto';
-import { SportUserEntity } from './sportUser.entity';
-import { ThirdUserEntity } from './thirdUser.entity';
+import { UserDto } from './DTOs/user.dto';
+import { SportUserEntity } from './Entities/sportUser.entity';
+import { ThirdUserEntity } from './Entities/thirdUser.entity';
 import { encrypt, decrypt } from '../utils/encrypt_decrypt';
 import * as jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
+import { UpdateTypePlanDto } from './DTOs/update-type-plan.dto';
 const expirationTime = 2 * 45 * 60 * 1000;
 
 @Injectable()
@@ -156,5 +157,30 @@ export class UserService {
             );
 
         await this.userRepository.remove(usuario);
+    }
+
+    async updateTypePlan(userId: string, updateTypePlanDto: UpdateTypePlanDto): Promise<SportUserEntity> {
+        const user = await this.userRepository.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new BusinessLogicException(
+                'The user with the given id was not found',
+                BusinessError.NOT_FOUND,
+            );
+        }
+        if (user.user_type !== 1) { // assuming typePlan is only for users of type 'S'
+            throw new BusinessLogicException(
+                'The user is not of type SportUser',
+                BusinessError.BAD_REQUEST,
+            );
+        }
+        const sportUser = await this.sportUserRepository.findOne({ where: { id: userId } });
+        if (!sportUser) {
+            throw new BusinessLogicException(
+                'The sport user with the given id was not found',
+                BusinessError.NOT_FOUND,
+            );
+        }
+        sportUser.typePlan = updateTypePlanDto.typePlan;
+        return await this.sportUserRepository.save(sportUser);
     }
 }
